@@ -704,6 +704,9 @@ class adLDAP {
         $ret = true;
         $this->ldapBind = @ldap_bind($this->ldapConnection, $username . $this->accountSuffix, $password);
         if (!$this->ldapBind) { 
+			if (!@ldap_bind($this->ldapConnection)) {
+                throw new adLDAPException('Rebind to Active Directory failed: ' . $this->getLastError());
+			}
             $ret = false; 
         }
         
