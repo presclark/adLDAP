@@ -911,6 +911,9 @@ class adLDAP {
         if (isset($attributes["exchange_hidefromlists"])){ $mod["msExchHideFromAddressLists"][0]=$attributes["exchange_hidefromlists"]; }
         if (isset($attributes["contact_email"])){ $mod["targetAddress"][0]=$attributes["contact_email"]; }
 
+		// Custom attributes:
+        if (isset($attributes["changepwd"])){ $mod["changepwd"][0]=$attributes["changepwd"]; }
+
         //echo ("<pre>"); print_r($mod);
         /*
         // modifying a name is a bit fiddly
