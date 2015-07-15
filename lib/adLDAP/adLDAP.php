@@ -912,7 +912,7 @@ class adLDAP {
         if (isset($attributes["contact_email"])){ $mod["targetAddress"][0]=$attributes["contact_email"]; }
 
 		// Custom attributes:
-        if (isset($attributes["changepwd"])){ $mod["changepwd"][0]=$attributes["changepwd"]; }
+        if (isset($attributes["customforcewebpasswordchange"])){ $mod["customforcewebpasswordchange"][0]=$attributes["customforcewebpasswordchange"]; }
 
         //echo ("<pre>"); print_r($mod);
         /*
