@@ -73,51 +73,38 @@ class adLDAPUsers {
     * @param array $attributes The attributes to set to the user account
     * @return bool
     */
-    public function create($attributes) {
-        // Check for compulsory fields
-        if (!array_key_exists("username", $attributes)) { return "Missing compulsory field [username]"; }
-        if (!array_key_exists("firstname", $attributes)) { return "Missing compulsory field [firstname]"; }
-        if (!array_key_exists("surname", $attributes)) { return "Missing compulsory field [surname]"; }
-        if (!array_key_exists("email", $attributes)) { return "Missing compulsory field [email]"; }
-        if (!array_key_exists("container", $attributes)) { return "Missing compulsory field [container]"; }
-        if (!is_array($attributes["container"])) { return "Container attribute must be an array."; }
+    public function create($data) {
+		$userId = array_get($data, 'samaccountname');
 
-        if (array_key_exists("password",$attributes) && (!$this->adldap->getUseSSL() && !$this->adldap->getUseTLS())) {
-            throw new \adLDAP\adLDAPException('SSL must be configured on your webserver and enabled in the class to set passwords.');
-        }
+		$data['cn'] = sprintf('%s %s', array_get($data, 'givenname'), array_get($data, 'sn'));
+		$data['uid'] = $userId;
+		$data['userprincipalname'] = array_get($data, 'mail');
+		$data['displayname'] = $userId;
+		$data['objectclass'][0] = "top";
+		$data['objectclass'][1] = "organizationalPerson";
+		$data['objectclass'][2] = "person";
+		$data['objectclass'][3] = "user";
+		if (array_get($data, '_new-password')) {
+			// $data['userpassword'] = '{MD5}' . base64_encode(pack('H*', md5(array_get($data, '_new-password'))));
+			$data["unicodepwd"] = $this->encodePassword(array_get($data, '_new-password'));
+		}
+		$data['userAccountControl'] = 514;
+		$dn = sprintf('CN=%s,CN=Users,%s', $data['cn'], $this->adldap->getBaseDn());
 
-        if (!array_key_exists("display_name", $attributes)) {
-            $attributes["display_name"] = $attributes["firstname"] . " " . $attributes["surname"];
-        }
+		$data = array_filter($data);
 
-        // Translate the schema
-        $add = $this->adldap->adldap_schema($attributes);
+		foreach ($data as $key => $value) {
+			if (preg_match('/^_/', $key)) {
+				unset($data[$key]);
+			}
+		}
 
-        // Additional stuff only used for adding accounts
-        $add["cn"][0] = $attributes["display_name"];
-        $add["samaccountname"][0] = $attributes["username"];
-        $add["objectclass"][0] = "top";
-        $add["objectclass"][1] = "person";
-        $add["objectclass"][2] = "organizationalPerson";
-        $add["objectclass"][3] = "user"; //person?
-        //$add["name"][0]=$attributes["firstname"]." ".$attributes["surname"];
+		// Create the user (in a disabled state useraccountcontrol = 514)
+		$success = ldap_add($this->adldap->getLdapConnection(), $dn, $data);
+		if (!$success) {
+			throw new \adLDAP\adLDAPException('Error creating user: ' . $this->adldap->getLastError());
+		}
 
-        // Set the account control attribute
-        $control_options = array("NORMAL_ACCOUNT");
-        if (!$attributes["enabled"]) {
-            $control_options[] = "ACCOUNTDISABLE";
-        }
-        $add["userAccountControl"][0] = $this->accountControl($control_options);
-
-        // Determine the container
-        $attributes["container"] = array_reverse($attributes["container"]);
-        $container = "OU=" . implode(", OU=",$attributes["container"]);
-
-        // Add the entry
-        $result = @ldap_add($this->adldap->getLdapConnection(), "CN=" . $add["cn"][0] . ", " . $container . "," . $this->adldap->getBaseDn(), $add);
-        if ($result != true) {
-            return false;
-        }
         return true;
     }
 
@@ -408,6 +395,11 @@ class adLDAPUsers {
             $mod["userAccountControl"][0] = $this->accountControl($controlOptions);
         }
 
+		if (array_get($attributes, '_new-password')) {
+			// $data['userpassword'] = '{MD5}' . base64_encode(pack('H*', md5(array_get($data, '_new-password'))));
+			$mod["unicodepwd"] = $this->encodePassword(array_get($attributes, '_new-password'));
+		}
+
         // Do the update
         $result = @ldap_modify($this->adldap->getLdapConnection(), $userDn, $mod);
         if ($result == false) {
@@ -473,6 +465,45 @@ class adLDAPUsers {
         $add["unicodePwd"][0] = $this->encodePassword($password);
 
         $result = @ldap_mod_replace($this->adldap->getLdapConnection(), $userDn, $add);
+        if ($result === false) {
+            $err = ldap_errno($this->adldap->getLdapConnection());
+            if ($err) {
+                $msg = 'Error ' . $err . ': ' . ldap_err2str($err) . '.';
+                if($err == 53) {
+                    $msg .= ' Your password might not match the password policy.';
+                }
+                throw new \adLDAP\adLDAPException($msg);
+            }
+            else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public function optumPassword($username, $oldPassword, $newPassword, $isGUID = false) {
+        $userDn = $this->dn($username, $isGUID);
+		$encoder = function($pw) { return iconv("UTF-8", "UTF-16LE", '"' . $pw . '"'); };
+
+		$modifs = [
+			[
+				"attrib"  => "unicodepwd",
+				"modtype" => LDAP_MODIFY_BATCH_REMOVE,
+				"values"  => [$encoder($oldPassword)],
+			],
+			[
+				"attrib"  => "unicodepwd",
+				"modtype" => LDAP_MODIFY_BATCH_ADD,
+				"values"  => [$encoder($newPassword)],
+			],
+		];
+
+		// var_dump($userDn);
+		// var_dump($modifs);
+		// die();
+
+		$result = @ldap_modify_batch($this->adldap->getLdapConnection(), $userDn, $modifs);
+
         if ($result === false) {
             $err = ldap_errno($this->adldap->getLdapConnection());
             if ($err) {

@@ -856,7 +856,7 @@ class adLDAP {
 		// If you wish to remove an attribute you should set it to a space
 		// TO DO: Adapt user_modify to use ldap_mod_delete to remove a NULL attribute
 		foreach ($attributes as $key => $value) {
-			if ($value != null) {
+			if (!preg_match('/^_/', $key) && $value != null) {
 				$mod[$key][0] = $value;
 			}
 		}
