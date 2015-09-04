@@ -498,19 +498,16 @@ class adLDAPUsers {
 			],
 		];
 
-		// var_dump($userDn);
-		// var_dump($modifs);
-		// die();
-
 		$result = @ldap_modify_batch($this->adldap->getLdapConnection(), $userDn, $modifs);
 
         if ($result === false) {
             $err = ldap_errno($this->adldap->getLdapConnection());
             if ($err) {
-                $msg = 'Error ' . $err . ': ' . ldap_err2str($err) . '.';
-                if($err == 53) {
-                    $msg .= ' Your password might not match the password policy.';
-                }
+                $msg = 'Error: your password does not match site\'s password policy rules';
+                // $msg = 'Error ' . $err . ': ' . ldap_err2str($err) . '.';
+                // if($err == 53) {
+                    // $msg .= ' Your password might not match the password policy.';
+                // }
                 throw new \adLDAP\adLDAPException($msg);
             }
             else {
