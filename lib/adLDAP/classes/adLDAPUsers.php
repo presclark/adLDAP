@@ -89,7 +89,7 @@ class adLDAPUsers {
 			$data["unicodepwd"] = $this->encodePassword(array_get($data, '_new-password'));
 		}
 		$data['userAccountControl'] = 514;
-		$dn = sprintf('CN=%s,CN=Users,%s', $data['cn'], $this->adldap->getBaseDn());
+		$dn = sprintf('CN=%s,OU=Clinical,%s', $data['cn'], $this->adldap->getBaseDn());
 
 		$data = array_filter($data);
 
@@ -227,7 +227,7 @@ class adLDAPUsers {
                         //$entries[0]["memberof"][]=$this->group_cn($entries[0]["primarygroupid"][0]);
                         $entries[0]["memberof"][] = $this->adldap->group()->getPrimaryGroup($entries[0]["primarygroupid"][0], $entries[0]["objectsid"][0]);
                     } else {
-                        $entries[0]["memberof"][] = "CN=Domain Users,CN=Users," . $this->adldap->getBaseDn();
+                        $entries[0]["memberof"][] = "CN=Domain Users,OU=Clinical," . $this->adldap->getBaseDn();
                     }
                     if (!isset($entries[0]["memberof"]["count"])) {
                         $entries[0]["memberof"]["count"] = 0;
