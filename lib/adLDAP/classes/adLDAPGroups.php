@@ -95,30 +95,34 @@ class adLDAPGroups {
     * @return bool
     */
     public function addUser($group, $user, $isGUID = false) {
-        // Adding a user is a bit fiddly, we need to get the full DN of the user
-        // and add it using the full DN of the group
+		// Adding a user is a bit fiddly, we need to get the full DN of the user
+		// and add it using the full DN of the group
 
-        // Find the user's dn
-        $userDn = $this->adldap->user()->dn($user, $isGUID);
-        if ($userDn === false) {
-            return false;
-        }
+		try {
+			// Find the user's dn
+			$userDn = $this->adldap->user()->dn($user, $isGUID);
+			if ($userDn === false) {
+				return false;
+			}
 
-        // Find the group's dn
-        $groupInfo = $this->info($group, array("cn"));
-        if ($groupInfo[0]["dn"] === NULL) {
-            return false;
-        }
-        $groupDn = $groupInfo[0]["dn"];
+			// Find the group's dn
+			$groupInfo = $this->info($group, array("cn"));
+			if ($groupInfo[0]["dn"] === NULL) {
+				return false;
+			}
+			$groupDn = $groupInfo[0]["dn"];
 
-        $add = array();
-        $add["member"] = $userDn;
+			$add = array();
+			$add["member"] = $userDn;
 
-        $result = @ldap_mod_add($this->adldap->getLdapConnection(), $groupDn, $add);
-        if ($result == false) {
-            return false;
-        }
-        return true;
+			$result = @ldap_mod_add($this->adldap->getLdapConnection(), $groupDn, $add);
+			if ($result == false) {
+				return false;
+			}
+			return true;
+		} catch (\Exception $e) {}
+
+		return false;
     }
 
     /**
@@ -276,27 +280,33 @@ class adLDAPGroups {
     */
     public function removeUser($group, $user, $isGUID = false) {
 
-        // Find the parent dn
-        $groupInfo = $this->info($group, array("cn"));
-        if ($groupInfo[0]["dn"] === NULL) {
-            return false;
-        }
-        $groupDn = $groupInfo[0]["dn"];
+		try {
+			// Find the parent dn
+			$groupInfo = $this->info($group, array("cn"));
+			if ($groupInfo[0]["dn"] === NULL) {
+				return false;
+			}
+			$groupDn = $groupInfo[0]["dn"];
 
-        // Find the users dn
-        $userDn = $this->adldap->user()->dn($user, $isGUID);
-        if ($userDn === false) {
-            return false;
-        }
+			// Find the users dn
+			$userDn = $this->adldap->user()->dn($user, $isGUID);
+			if ($userDn === false) {
+				return false;
+			}
 
-        $del = array();
-        $del["member"] = $userDn;
+			$del = array();
+			$del["member"] = $userDn;
 
-        $result = @ldap_mod_del($this->adldap->getLdapConnection(), $groupDn, $del);
-        if ($result == false) {
-            return false;
-        }
-        return true;
+			$result = @ldap_mod_del($this->adldap->getLdapConnection(), $groupDn, $del);
+			if ($result == false) {
+				return false;
+			}
+			return true;
+		} catch (\Exception $e) {}
+
+		// +sd($group, $user);
+
+		return false;
     }
 
     /**
